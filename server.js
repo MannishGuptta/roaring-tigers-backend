@@ -1,14 +1,21 @@
-const http = require('http');
-
-const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ 
-    message: 'Test server working',
-    time: new Date().toISOString()
-  }));
-});
+const jsonServer = require('json-server');
+const server = jsonServer.create();
+const router = jsonServer.router('db.json');
+const middlewares = jsonServer.defaults();
 
 const port = process.env.PORT || 3002;
+
+server.use(middlewares);
+server.use(router);
+
+server.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    time: new Date().toISOString(),
+    message: 'Roaring Tigers API is running'
+  });
+});
+
 server.listen(port, '0.0.0.0', () => {
-  console.log(`✅ Test server running on port ${port}`);
+  console.log(`✅ Server running on port ${port}`);
 });

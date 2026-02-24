@@ -4,12 +4,12 @@
   "description": "Backend API for Roaring Tigers CRM",
   "main": "server.js",
   "dependencies": {
-    "json-server": "1.0.0-beta.3"
+    "json-server": "^1.0.0-beta.3"
   },
   "scripts": {
     "start": "node server.js"
   },
   "engines": {
-    "node": "18.x"
+    "node": "20.x"
   }
 }
