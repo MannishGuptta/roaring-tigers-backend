@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: roaring-tigers-backend
+    runtime: node
+    repo: https://github.com/MannishGuptta/roaring-tigers-backend
+    plan: free
+    region: singapore
+    buildCommand: npm ci --only=production
+    startCommand: node server.js
+    envVars:
+      - key: NODE_VERSION
+        value: 18
