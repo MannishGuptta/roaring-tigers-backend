@@ -44,6 +44,48 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Roaring Tigers API is running with Supabase' });
 });
 
+// ============= LOGIN ENDPOINT =============
+app.post('/login', async (req, res) => {
+  try {
+    const { phone, password } = req.body;
+    
+    console.log('Login attempt for phone:', phone);
+    
+    if (!phone || !password) {
+      return res.status(400).json({ error: 'Phone and password required' });
+    }
+    
+    const { data, error } = await supabase
+      .from('rms')
+      .select('id, name, phone, email, join_date, status')
+      .eq('phone', phone)
+      .eq('password_hash', password)
+      .single();
+    
+    if (error) {
+      console.error('Supabase error:', error);
+      if (error.code === 'PGRST116') {
+        return res.status(401).json({ error: 'Invalid phone or password' });
+      }
+      throw error;
+    }
+    
+    if (!data) {
+      return res.status(401).json({ error: 'Invalid phone or password' });
+    }
+    
+    console.log('Login successful for:', data.name);
+    res.json({ 
+      success: true, 
+      message: 'Login successful',
+      user: data 
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    handleError(res, err, 'Error during login');
+  }
+});
+
 // ============= DEBUG ENDPOINT FOR RMS =============
 app.get('/debug-rms', async (req, res) => {
   try {
@@ -172,43 +214,6 @@ app.delete('/rms/:id', async (req, res) => {
   }
 });
 
-// ============= LOGIN ENDPOINT =============
-app.post('/login', async (req, res) => {
-  try {
-    const { phone, password } = req.body;
-    
-    if (!phone || !password) {
-      return res.status(400).json({ error: 'Phone and password required' });
-    }
-    
-    const { data, error } = await supabase
-      .from('rms')
-      .select('id, name, phone, email, join_date, status')
-      .eq('phone', phone)
-      .eq('password_hash', password)
-      .single();
-    
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
-      throw error;
-    }
-    
-    if (!data) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-    
-    res.json({ 
-      success: true, 
-      message: 'Login successful',
-      user: data 
-    });
-  } catch (err) {
-    handleError(res, err, 'Error during login');
-  }
-});
-
 // ============= CHANNEL PARTNERS ENDPOINTS =============
 app.get('/channel_partners', async (req, res) => {
   try {
@@ -294,12 +299,10 @@ app.get('/sales', async (req, res) => {
   try {
     let query = supabase.from('sales').select('*');
     
-    // Filter by rm_id if provided
     if (req.query.rm_id) {
       query = query.eq('rm_id', req.query.rm_id);
     }
     
-    // Filter by date range if provided
     if (req.query.start_date) {
       query = query.gte('sale_date', req.query.start_date);
     }
@@ -453,7 +456,7 @@ app.post('/kpi_targets', async (req, res) => {
   }
 });
 
-// ============= TARGETS ENDPOINT (for backward compatibility) =============
+// ============= TARGETS ENDPOINT =============
 app.get('/targets', async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -463,7 +466,6 @@ app.get('/targets', async (req, res) => {
     if (error) throw error;
     res.json(data || []);
   } catch (err) {
-    // If targets table doesn't exist, return empty array
     console.log('Targets table might not exist, returning empty array');
     res.json([]);
   }
