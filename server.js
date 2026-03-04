@@ -43,36 +43,73 @@ const validateRequired = (fields, body) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Roaring Tigers API is running with Supabase' });
 });
-// DEBUG - Check Supabase connection
+
+// ============= DEBUG ENDPOINT FOR RMS =============
 app.get('/debug-rms', async (req, res) => {
   try {
-    // Test 1: Simple query
-    const { data, error } = await supabase
+    // Test 1: Check if table exists and get count
+    const { count, error: countError } = await supabase
       .from('rms')
-      .select('count', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true });
+    
+    // Test 2: Try to get actual data
+    const { data: actualData, error: dataError } = await supabase
+      .from('rms')
+      .select('*');
+    
+    // Test 3: Check RLS by trying with a different approach
+    const { data: rlsTest, error: rlsError } = await supabase
+      .from('rms')
+      .select('id, name, phone')
+      .limit(1);
     
     res.json({
-      connection: 'OK',
-      table_exists: !error,
-      error: error ? error.message : null,
-      count: data
+      status: 'Debug endpoint working',
+      table_check: {
+        exists: !countError,
+        error: countError ? countError.message : null,
+        row_count: count || 0
+      },
+      data_check: {
+        success: !dataError,
+        error: dataError ? dataError.message : null,
+        row_count: actualData ? actualData.length : 0,
+        sample: actualData ? actualData.slice(0, 2) : []
+      },
+      rls_check: {
+        success: !rlsError,
+        error: rlsError ? rlsError.message : null,
+        can_read: !rlsError && rlsTest !== null
+      },
+      full_data: actualData || []
     });
   } catch (err) {
-    res.json({ error: err.message });
+    res.status(500).json({ 
+      error: 'Server error in debug endpoint', 
+      details: err.message,
+      stack: err.stack
+    });
   }
 });
+
 // ============= RMS ENDPOINTS =============
 // Get all RMs
 app.get('/rms', async (req, res) => {
   try {
+    console.log('Fetching all RMs...');
     const { data, error } = await supabase
       .from('rms')
       .select('*')
       .order('id');
     
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error:', error);
+      throw error;
+    }
+    console.log(`Found ${data?.length || 0} RMs`);
     res.json(data || []);
   } catch (err) {
+    console.error('Error in /rms endpoint:', err);
     handleError(res, err, 'Error fetching RMs');
   }
 });
@@ -225,22 +262,7 @@ app.delete('/channel_partners/:id', async (req, res) => {
     handleError(res, err, 'Error deleting channel partner');
   }
 });
-// DEBUG - Test endpoint
-app.get('/test-sales', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('sales')
-      .select('count', { count: 'exact', head: true });
-    
-    res.json({ 
-      message: 'Test endpoint working',
-      count: data,
-      error: error ? error.message : null
-    });
-  } catch (err) {
-    res.json({ error: err.message });
-  }
-});
+
 // ============= SALES ENDPOINTS =============
 app.get('/sales', async (req, res) => {
   try {
@@ -441,7 +463,7 @@ app.get('/targets/:id', async (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     error: 'Not found',
-    message: 'Available endpoints: /health, /rms, /channel_partners, /meetings, /sales, /targets, /kpi_targets'
+    message: 'Available endpoints: /health, /rms, /channel_partners, /meetings, /sales, /targets, /kpi_targets, /debug-rms'
   });
 });
 
@@ -450,6 +472,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`📊 Available endpoints:`);
   console.log(`   - /health`);
+  console.log(`   - /debug-rms (debug endpoint)`);
   console.log(`   - /rms (with full CRUD!)`);
   console.log(`   - /channel_partners`);
   console.log(`   - /meetings`);
