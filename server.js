@@ -208,7 +208,22 @@ app.delete('/channel_partners/:id', async (req, res) => {
     handleError(res, err, 'Error deleting channel partner');
   }
 });
-
+// DEBUG - Test endpoint
+app.get('/test-sales', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('sales')
+      .select('count', { count: 'exact', head: true });
+    
+    res.json({ 
+      message: 'Test endpoint working',
+      count: data,
+      error: error ? error.message : null
+    });
+  } catch (err) {
+    res.json({ error: err.message });
+  }
+});
 // ============= SALES ENDPOINTS =============
 app.get('/sales', async (req, res) => {
   try {
