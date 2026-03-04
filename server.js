@@ -43,7 +43,24 @@ const validateRequired = (fields, body) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Roaring Tigers API is running with Supabase' });
 });
-
+// DEBUG - Check Supabase connection
+app.get('/debug-rms', async (req, res) => {
+  try {
+    // Test 1: Simple query
+    const { data, error } = await supabase
+      .from('rms')
+      .select('count', { count: 'exact', head: true });
+    
+    res.json({
+      connection: 'OK',
+      table_exists: !error,
+      error: error ? error.message : null,
+      count: data
+    });
+  } catch (err) {
+    res.json({ error: err.message });
+  }
+});
 // ============= RMS ENDPOINTS =============
 // Get all RMs
 app.get('/rms', async (req, res) => {
